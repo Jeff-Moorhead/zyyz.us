@@ -101,8 +101,8 @@ func main() {
 			return c.HTML(http.StatusBadRequest, fmt.Sprintf("<p>could not find url for %v</p>", id))
 		}
 
-		if !strings.HasPrefix(uri.Root, "www.") {
-			uri.Root = fmt.Sprintf("www.%v", uri.Root)
+		if !strings.HasPrefix(uri.Root, "http://") {
+			uri.Root = fmt.Sprintf("http://%v", uri.Root)
 		}
 
 		return c.Redirect(http.StatusMovedPermanently, uri.Root)
