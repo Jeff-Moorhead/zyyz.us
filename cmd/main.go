@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS links (
 )
 
 type url struct {
-	Root string `form:"root"`
+	Root string `form:"root" db:"root"`
 }
 
 type Template struct {
@@ -71,7 +71,7 @@ func main() {
 		err := c.Render(http.StatusOK, "index", nil)
 		if err != nil {
 			log.Printf("an unknown error occurred: %v", err)
-			return err
+			return c.HTML(http.StatusInternalServerError, "<p>an unknown error occurred</p>")
 		}
 
 		return nil
@@ -81,13 +81,14 @@ func main() {
 		var u url
 		err := c.Bind(&u)
 		if err != nil {
+			log.Printf("could not process incoming url: %v", err)
 			return c.HTML(http.StatusBadRequest, "<p>could not process url</p>")
 		}
 
 		id := createUniqueId()
 		shortened := fmt.Sprintf("https://zyyz.us/%v", id)
 		dbconn.MustExec(CreateLink, u.Root, shortened)
-		return c.HTML(http.StatusOK, fmt.Sprintf("<p>Shortened link: %v</p>", shortened))
+		return c.HTML(http.StatusOK, fmt.Sprintf("<p>Shortened link: <a>%v</a href=%v></p>", shortened, shortened))
 	})
 
 	e.GET("/:shortened", func(c echo.Context) error {
@@ -95,6 +96,7 @@ func main() {
 		var uri url
 		err := dbconn.Get(&uri, GetRoot, id)
 		if err != nil {
+			log.Printf("could not get root for id %v: %v", id, err)
 			return c.HTML(http.StatusBadRequest, fmt.Sprintf("<p>could not find url for %v</p>", id))
 		}
 
