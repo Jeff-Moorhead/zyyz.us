@@ -2,11 +2,25 @@ package main
 
 import (
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 	"html/template"
 	"io"
 	"log"
 	"net/http"
+)
+
+const (
+	DBHOST   = "app-0758ee2f-c7d3-45ec-9b1d-fecd98a80e8d-do-user-13154931-0.b.db.ondigitalocean.com"
+	DBPORT   = 25060
+	DATABASE = "zyyz-db"
+	Schema   = `
+CREATE TABLE IF NOT EXISTS links (
+    root TEXT NOT NULL,
+    shortened TEXT NOT NULL,
+    CONSTRAINT pk_root_shortened PRIMARY KEY (root, shortened)
+)
+`
 )
 
 type url struct {
@@ -26,6 +40,13 @@ func main() {
 	t := &Template{
 		templates: template.Must(template.ParseGlob("static/*.html")),
 	}
+
+	dbconn, err := sqlx.Connect("postgres", fmt.Sprintf("dbname=%v sslmode=require", DATABASE))
+	if err != nil {
+		log.Fatalf("could not connect to the database: %v", err)
+	}
+
+	dbconn.MustExec(Schema, nil)
 
 	e := echo.New()
 	e.Renderer = t
