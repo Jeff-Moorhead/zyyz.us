@@ -87,8 +87,8 @@ func main() {
 
 		id := createUniqueId()
 		shortened := fmt.Sprintf("https://zyyz.us/%v", id)
-		dbconn.MustExec(CreateLink, u.Root, shortened)
-		return c.HTML(http.StatusOK, fmt.Sprintf("<p>Shortened link: <a>%v</a href=%v></p>", shortened, shortened))
+		dbconn.MustExec(CreateLink, u.Root, id)
+		return c.HTML(http.StatusOK, fmt.Sprintf("<p>Shortened link: <a href=%v>%v</a></p>", shortened, shortened))
 	})
 
 	e.GET("/:shortened", func(c echo.Context) error {
