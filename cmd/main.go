@@ -42,7 +42,7 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 
 func createUniqueId() string {
 	alphanum := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	length := 8
+	length := 10
 
 	b := make([]rune, length)
 	for i := range b {
@@ -89,7 +89,7 @@ func main() {
 		id := createUniqueId()
 		shortened := fmt.Sprintf("https://zyyz.us/%v", id)
 		dbconn.MustExec(CreateLink, u.Root, id)
-		return c.HTML(http.StatusOK, fmt.Sprintf("<p>Shortened link: <a href=%v>%v</a></p>", shortened, shortened))
+		return c.HTML(http.StatusOK, fmt.Sprintf("<p>Shortened link: <a href=%v target=_blank>%v</a></p>", shortened, shortened))
 	})
 
 	e.GET("/:shortened", func(c echo.Context) error {
