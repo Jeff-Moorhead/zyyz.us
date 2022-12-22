@@ -8,17 +8,24 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 )
 
-const Schema = `
+const (
+	Schema = `
 CREATE TABLE IF NOT EXISTS links (
     root TEXT NOT NULL,
     shortened TEXT NOT NULL,
     CONSTRAINT pk_root_shortened PRIMARY KEY (root, shortened)
 )
 `
+
+	CreateLink = `INSERT INTO links VALUES ($1, $2)`
+
+	GetRoot = `SELECT root FROM links WHERE shortened = $1`
+)
 
 type url struct {
 	Root string `form:"root"`
@@ -32,6 +39,18 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
+func createUniqueId() string {
+	alphanum := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	length := 8
+
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = alphanum[rand.Intn(len(alphanum))]
+	}
+
+	return string(b)
+}
+
 func main() {
 
 	t := &Template{
@@ -43,7 +62,7 @@ func main() {
 		log.Fatalf("could not connect to the database: %v", err)
 	}
 
-	dbconn.MustExec(Schema, nil)
+	dbconn.MustExec(Schema)
 
 	e := echo.New()
 	e.Renderer = t
@@ -65,7 +84,21 @@ func main() {
 			return c.HTML(http.StatusBadRequest, "<p>could not process url</p>")
 		}
 
-		return c.HTML(http.StatusOK, fmt.Sprintf("<p>You submitted %v as the url to shorten</p>", u.Root))
+		id := createUniqueId()
+		shortened := fmt.Sprintf("https://zyyz.us/%v", id)
+		dbconn.MustExec(CreateLink, u.Root, shortened)
+		return c.HTML(http.StatusOK, fmt.Sprintf("<p>Shortened link: %v</p>", shortened))
+	})
+
+	e.GET("/:shortened", func(c echo.Context) error {
+		id := c.Param("shortened")
+		var uri url
+		err := dbconn.Get(&uri, GetRoot, id)
+		if err != nil {
+			return c.HTML(http.StatusBadRequest, fmt.Sprintf("<p>could not find url for %v</p>", id))
+		}
+
+		return c.Redirect(http.StatusMovedPermanently, uri.Root)
 	})
 
 	log.Fatal(e.Start(":8080"))
