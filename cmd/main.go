@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 )
 
 const (
@@ -98,6 +99,10 @@ func main() {
 		if err != nil {
 			log.Printf("could not get root for id %v: %v", id, err)
 			return c.HTML(http.StatusBadRequest, fmt.Sprintf("<p>could not find url for %v</p>", id))
+		}
+
+		if !strings.HasPrefix(uri.Root, "www.") {
+			uri.Root = fmt.Sprintf("www.%v", uri.Root)
 		}
 
 		return c.Redirect(http.StatusMovedPermanently, uri.Root)
