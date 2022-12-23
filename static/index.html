@@ -1,18 +1,24 @@
-{{ define "index" }}
+<!-- {{ define "index" }} -->
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="author" content="Jeff Moorhead">
-    <meta name="description" content="A project to experiment with cloud deployment">
-    <title>zyyz</title>
-</head>
-<body>
-<form action="/add" method="post">
-    <label for="root">URL: </label>
-    <input type="text" id="root" name="root">
-    <input type="submit" id="submit" name="submit" value="Shorten">
-</form>
-</body>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="author" content="Jeff Moorhead">
+        <meta name="description" content="A project to experiment with cloud deployment">
+        <title>zyyz</title>
+        <link type="text/css" href="./styles.css" rel="stylesheet">
+    </head>
+    <body>
+        <h1 id="about">
+            Shorten a URL
+        </h1>
+        <div id="form-container">
+            <form action="/add" method="post" id="url-form">
+                <label for="root" class="url-label">URL: </label>
+                <input type="text" id="root" name="root"><br><br>
+                <input type="submit" id="submit-url" name="submit" value="Shorten">
+            </form>
+        </div>
+    </body>
 </html>
-{{ end }}
+<!-- {{ end }} -->

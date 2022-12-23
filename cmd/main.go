@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	_ "github.com/lib/pq"
 	"html/template"
 	"io"
 	"log"
-	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
-	"strings"
 )
 
 const (
@@ -28,7 +29,7 @@ CREATE TABLE IF NOT EXISTS links (
 	GetRoot = `SELECT root FROM links WHERE shortened = $1`
 )
 
-type url struct {
+type entry struct {
 	Root string `form:"root" db:"root"`
 }
 
@@ -41,17 +42,14 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 }
 
 func createUniqueId() string {
-	alphanum := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	length := 10
 
-	b := make([]rune, length)
-	for i := range b {
-		b[i] = alphanum[rand.Intn(len(alphanum))]
-	}
-
-	return string(b)
+	// We'll use UUIDs just to be sure we don't get a collision
+	// before the heat death of the universe
+	id := uuid.New()
+	return id.String()
 }
 
+// TODO: refactor this stuff
 func main() {
 
 	t := &Template{
@@ -66,6 +64,7 @@ func main() {
 	dbconn.MustExec(Schema)
 
 	e := echo.New()
+	e.Use(middleware.HTTPSWWWRedirect())
 	e.Renderer = t
 	e.GET("/", func(c echo.Context) error {
 		log.Print("incoming request!")
@@ -79,11 +78,11 @@ func main() {
 	})
 
 	e.POST("/add", func(c echo.Context) error {
-		var u url
+		var u entry
 		err := c.Bind(&u)
 		if err != nil {
-			log.Printf("could not process incoming url: %v", err)
-			return c.HTML(http.StatusBadRequest, "<p>could not process url</p>")
+			log.Printf("could not process incoming entry: %v", err)
+			return c.HTML(http.StatusBadRequest, "<p>could not process entry</p>")
 		}
 
 		id := createUniqueId()
@@ -94,18 +93,24 @@ func main() {
 
 	e.GET("/:shortened", func(c echo.Context) error {
 		id := c.Param("shortened")
-		var uri url
+		var uri entry
 		err := dbconn.Get(&uri, GetRoot, id)
 		if err != nil {
 			log.Printf("could not get root for id %v: %v", id, err)
-			return c.HTML(http.StatusBadRequest, fmt.Sprintf("<p>could not find url for %v</p>", id))
+			return c.HTML(http.StatusBadRequest, fmt.Sprintf("<p>could not find entry for %v</p>", id))
 		}
 
-		if !strings.HasPrefix(uri.Root, "http://") {
-			uri.Root = fmt.Sprintf("http://%v", uri.Root)
+		u, err := url.Parse(uri.Root)
+		if err != nil {
+			log.Printf("could not parse url %v: %v", uri.Root, err)
+			return c.HTML(http.StatusInternalServerError, fmt.Sprint(`<p class="error">could not parse url %v</p>`, uri.Root))
 		}
 
-		return c.Redirect(http.StatusMovedPermanently, uri.Root)
+		if u.Scheme == "" {
+			u.Scheme = "https" // assume https for missing schemes
+		}
+
+		return c.Redirect(http.StatusMovedPermanently, u.String())
 	})
 
 	log.Fatal(e.Start(":8080"))
