@@ -6,7 +6,7 @@
         <meta name="author" content="Jeff Moorhead">
         <meta name="description" content="A project to experiment with cloud deployment">
         <title>zyyz</title>
-        <link type="text/css" href="./styles.css" rel="stylesheet">
+        <link href="./static/styles.css" rel="stylesheet">
     </head>
     <body>
         <h1 id="about">
@@ -18,6 +18,10 @@
                 <input type="text" id="root" name="root"><br><br>
                 <input type="submit" id="submit-url" name="submit" value="Shorten">
             </form>
+        </div>
+        <div id="shortened-url-container">
+            <h3 id="shortened-header">Shortened URL:</h3>
+            <a id="shortened-url" href="{{ .Shortened }}" target="_blank">{{ .Shortened }}</a>
         </div>
     </body>
 </html>

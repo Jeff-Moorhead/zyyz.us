@@ -20,6 +20,29 @@ body {
     width: 400px;
 }
 
+#shortened-url-container {
+    text-align: center;
+    color: #FFFFFF;
+}
+
+#shortened-header {
+    margin: 25px;
+}
+
+a:link {
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+#shortened-url {
+    text-align: center;
+    font-size: 20px;
+    color: #FFFFFF;
+}
+
 .url-label {
     color: #FFFFFF;
 }

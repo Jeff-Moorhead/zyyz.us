@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -13,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 )
 
 const (
@@ -30,7 +32,8 @@ CREATE TABLE IF NOT EXISTS links (
 )
 
 type entry struct {
-	Root string `form:"root" db:"root"`
+	Root      string `form:"root" db:"root"`
+	Shortened string `query:"shortened"`
 }
 
 type Template struct {
@@ -46,7 +49,7 @@ func createUniqueId() string {
 	// We'll use UUIDs just to be sure we don't get a collision
 	// before the heat death of the universe
 	id := uuid.New()
-	return id.String()
+	return strings.Replace(id.String(), "-", "", -1)
 }
 
 // TODO: refactor this stuff
@@ -54,6 +57,10 @@ func createUniqueId() string {
 // TODO: dynamically populate errors in HTML
 // TODO: wire up a leveled logging library (probably logrus)
 func main() {
+
+	var env string
+	flag.StringVar(&env, "env", "", "environment. 'local' for insecure connections.")
+	flag.Parse()
 
 	t := &Template{
 		templates: template.Must(template.ParseGlob("static/*.html")),
@@ -67,11 +74,30 @@ func main() {
 	dbconn.MustExec(Schema)
 
 	e := echo.New()
-	e.Use(middleware.HTTPSWWWRedirect())
+
+	var hostname string
+	if env != "local" {
+		log.Printf("got env %v: setting https redirect", env)
+		e.Use(middleware.HTTPSWWWRedirect())
+		hostname = "https://zyyz.us"
+	} else {
+		hostname = "http://localhost:8080" // TODO: is there a way to do this dynamically?
+	}
+
 	e.Renderer = t
+
+	e.Static("/static", "static")
+
 	e.GET("/", func(c echo.Context) error {
-		log.Print("incoming request!")
-		err := c.Render(http.StatusOK, "index", nil)
+
+		var e entry
+		err := c.Bind(&e)
+		if err != nil {
+			log.Printf("could not process request: %v", err)
+			return c.HTML(http.StatusBadRequest, "<p>could not process entry</p>")
+		}
+
+		err = c.Render(http.StatusOK, "index", e)
 		if err != nil {
 			log.Printf("an unknown error occurred: %v", err)
 			return c.HTML(http.StatusInternalServerError, "<p>an unknown error occurred</p>")
@@ -81,17 +107,18 @@ func main() {
 	})
 
 	e.POST("/add", func(c echo.Context) error {
-		var u entry
-		err := c.Bind(&u)
+		var e entry
+		err := c.Bind(&e)
 		if err != nil {
 			log.Printf("could not process incoming entry: %v", err)
 			return c.HTML(http.StatusBadRequest, "<p>could not process entry</p>")
 		}
 
 		id := createUniqueId()
-		shortened := fmt.Sprintf("https://zyyz.us/%v", id)
-		dbconn.MustExec(CreateLink, u.Root, id)
-		return c.HTML(http.StatusOK, fmt.Sprintf("<p>Shortened link: <a href=%v target=_blank>%v</a></p>", shortened, shortened))
+		shortened := fmt.Sprintf("%v/%v", hostname, id)
+		dbconn.MustExec(CreateLink, e.Root, id)
+
+		return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/?shortened=%v", url.QueryEscape(shortened)))
 	})
 
 	e.GET("/:shortened", func(c echo.Context) error {
