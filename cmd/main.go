@@ -50,6 +50,9 @@ func createUniqueId() string {
 }
 
 // TODO: refactor this stuff
+// TODO: write unit tests
+// TODO: dynamically populate errors in HTML
+// TODO: wire up a leveled logging library (probably logrus)
 func main() {
 
 	t := &Template{
